@@ -6,7 +6,10 @@ import 'package:grouped_buttons/grouped_buttons.dart';
 import 'package:medicthirdeye/style/clipper.dart';
 import 'package:http/http.dart' as http;
 
+import '../home.dart';
+
 final String docregurl = "http://192.168.43.226:3001/doctors/signup";
+final String doclogurl = "http://192.168.43.226:3001/doctors/login";
 
 class Doc_auth extends StatefulWidget {
   @override
@@ -212,6 +215,30 @@ class _Doc_authState extends State<Doc_auth> {
             context, "Success", "Your account has been created,please log in.");
         Future.delayed(Duration(seconds: 3)).whenComplete(() => Navigator.push(
             context, MaterialPageRoute(builder: (context) => Doc_auth())));
+      } else {
+        displayDialog(context, "Unsuccessful",
+            "An error occurred, please recheck your inputs.");
+      }
+    }
+
+    Future<http.Response> attemptDocLogin(
+      String email,
+      String password,
+    ) async {
+      var res = await http.post(
+        doclogurl,
+        headers: <String, String>{
+          "Accept": "application/json",
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: json.encode({
+          "email": email,
+          "password": password,
+        }),
+      );
+      if (res.statusCode == 200) {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => Home()));
       }
     }
 
@@ -220,6 +247,7 @@ class _Doc_authState extends State<Doc_auth> {
       _password = _passwordController.text;
       _emailController.clear();
       _passwordController.clear();
+      attemptDocLogin(_email, _password);
     }
 
     void _regDoc() {
@@ -231,6 +259,14 @@ class _Doc_authState extends State<Doc_auth> {
       _phno = _phnoController.text;
       _licen = _licenController.text;
       _address = _addressController.text;
+      _emailController.clear();
+      _passwordController.clear();
+      _fnameController.clear();
+      _lnameController.clear();
+      _addressController.clear();
+      _ageController.clear();
+      _phnoController.clear();
+      _licenController.clear();
 
       attemptDocSignUp(_fName, _lName, _email, _password, _age, doc_gender,
           _address, _phno, doc_qua, _licen, doc_spl);

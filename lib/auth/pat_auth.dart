@@ -1,5 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:gender_selector/gender_selector.dart';
+import 'package:grouped_buttons/grouped_buttons.dart';
 import 'package:medicthirdeye/style/clipper.dart';
+import 'package:http/http.dart' as http;
+
+import '../home.dart';
+
+final String patregurl = "http://192.168.43.226:3001/users/signup";
+final String patlogurl = "http://192.168.43.226:3001/users/login";
 
 class Pat_auth extends StatefulWidget {
   @override
@@ -10,11 +20,28 @@ class _Pat_authState extends State<Pat_auth> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   TextEditingController _emailController = new TextEditingController();
   TextEditingController _passwordController = new TextEditingController();
-  TextEditingController _nameController = new TextEditingController();
+  TextEditingController _fnameController = new TextEditingController();
+  TextEditingController _lnameController = new TextEditingController();
+  TextEditingController _ageController = new TextEditingController();
+  TextEditingController _addressController = new TextEditingController();
+  TextEditingController _phnoController = new TextEditingController();
   String _email;
   String _password;
-  String _displayName;
+  String _fName;
+  String _lName;
+  String _address;
+  String _phno;
+  String _age;
+  String pat_gender;
+  List<String> pat_chronic;
+
   bool _obsecure = false;
+
+  void displayDialog(context, title, text) => showDialog(
+        context: context,
+        builder: (context) =>
+            AlertDialog(title: Text(title), content: Text(text)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -148,20 +175,92 @@ class _Pat_authState extends State<Pat_auth> {
 
     //login and register fuctions
 
-    void _loginPat() {
-      _email = _emailController.text;
-      _password = _passwordController.text;
-      _emailController.clear();
-      _passwordController.clear();
+    Future<http.Response> attemptPatSignUp(
+        String fname,
+        String lname,
+        String email,
+        String password,
+        String age,
+        String gender,
+        String address,
+        String phone,
+        List<String> chronic_disease) async {
+      var res = await http.post(
+        patregurl,
+        headers: <String, String>{
+          "Accept": "application/json",
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: json.encode({
+          "fname": fname,
+          "lname": lname,
+          "email": email,
+          "password": password,
+          "age": age,
+          "gender": gender,
+          "address": address,
+          "phone": phone,
+          "chronic_disease": chronic_disease
+        }),
+      );
+      if (res.statusCode == 200) {
+        displayDialog(
+            context, "Success", "Your account has been created,please log in.");
+        Future.delayed(Duration(seconds: 3)).whenComplete(() => Navigator.push(
+            context, MaterialPageRoute(builder: (context) => Pat_auth())));
+      } else {
+        displayDialog(context, "Unsuccessful",
+            "An error occurred, please recheck your inputs.");
+      }
     }
 
-    void _regPat() {
+    Future<http.Response> attemptPatLogin(
+      String email,
+      String password,
+    ) async {
+      var res = await http.post(
+        patlogurl,
+        headers: <String, String>{
+          "Accept": "application/json",
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: json.encode({
+          "email": email,
+          "password": password,
+        }),
+      );
+      if (res.statusCode == 200) {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => Home()));
+      }
+    }
+
+    void _loginDoc() {
       _email = _emailController.text;
       _password = _passwordController.text;
-      _displayName = _nameController.text;
       _emailController.clear();
       _passwordController.clear();
-      _nameController.clear();
+      attemptPatLogin(_email, _password);
+    }
+
+    void _regDoc() {
+      _email = _emailController.text;
+      _password = _passwordController.text;
+      _fName = _fnameController.text;
+      _lName = _lnameController.text;
+      _age = _ageController.text;
+      _phno = _phnoController.text;
+      _address = _addressController.text;
+      _emailController.clear();
+      _passwordController.clear();
+      _fnameController.clear();
+      _lnameController.clear();
+      _ageController.clear();
+      _phnoController.clear();
+      _addressController.clear();
+
+      attemptPatSignUp(_fName, _lName, _email, _password, _age, pat_gender,
+          _address, _phno, pat_chronic);
     }
 
     void _loginSheet() {
@@ -255,7 +354,7 @@ class _Pat_authState extends State<Pat_auth> {
                               bottom: MediaQuery.of(context).viewInsets.bottom),
                           child: Container(
                             child: _button("LOGIN", Colors.white, primary,
-                                primary, Colors.white, _loginPat),
+                                primary, Colors.white, _loginDoc),
                             height: 50,
                             width: MediaQuery.of(context).size.width,
                           ),
@@ -299,7 +398,11 @@ class _Pat_authState extends State<Pat_auth> {
                               Navigator.of(context).pop();
                               _emailController.clear();
                               _passwordController.clear();
-                              _nameController.clear();
+                              _fnameController.clear();
+                              _lnameController.clear();
+                              _addressController.clear();
+                              _ageController.clear();
+                              _phnoController.clear();
                             },
                             icon: Icon(
                               Icons.close,
@@ -371,8 +474,13 @@ class _Pat_authState extends State<Pat_auth> {
                           bottom: 20,
                           top: 60,
                         ),
-                        child: _input(Icon(Icons.account_circle),
-                            "DISPLAY NAME", _nameController, false),
+                        child: _input(Icon(Icons.account_circle), "FIRST NAME",
+                            _fnameController, false),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: _input(Icon(Icons.account_circle), "LAST NAME",
+                            _lnameController, false),
                       ),
                       Padding(
                         padding: EdgeInsets.only(
@@ -387,13 +495,70 @@ class _Pat_authState extends State<Pat_auth> {
                             _passwordController, true),
                       ),
                       Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: _input(Icon(Icons.phone), "Phone number",
+                            _phnoController, false),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: _input(
+                            Icon(Icons.person), "AGE", _ageController, false),
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            'YOU ARE',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      GenderSelector(
+                        margin: EdgeInsets.only(
+                          left: 10,
+                          top: 30,
+                          right: 10,
+                          bottom: 10,
+                        ),
+                        selectedGender: Gender.FEMALE,
+                        onChanged: (gender) async {
+                          setState(() {
+                            if (gender == Gender.FEMALE) {
+                              pat_gender = "Female";
+                            } else {
+                              pat_gender = "Male";
+                            }
+                          });
+                        },
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            'ANY CHRONIC DISEASES?',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      CheckboxGroup(
+                          labels: <String>["D1", "D2", "D3", "D4"],
+                          onSelected: (List<String> checked) =>
+                              pat_chronic = checked),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: _input(Icon(Icons.place), "ADDRESS",
+                            _addressController, false),
+                      ),
+                      Padding(
                         padding: EdgeInsets.only(
                             left: 20,
                             right: 20,
                             bottom: MediaQuery.of(context).viewInsets.bottom),
                         child: Container(
                           child: _button("REGISTER", Colors.white, primary,
-                              primary, Colors.white, _regPat),
+                              primary, Colors.white, _regDoc),
                           height: 50,
                           width: MediaQuery.of(context).size.width,
                         ),
